@@ -7,10 +7,10 @@ import Image from "next/image";
 import logo from "../../../public/assets/logo-waply.png"; // Replace with your logo path
 
 const SetPinPage: React.FC = () => {
-  const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [pin, setPin] = useState<string>("");
+  const [confirmPin, setConfirmPin] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(false);
   const router = useRouter();
   const params = useParams<{ urlId: string }>();
   const urlId = params.urlId;
@@ -53,12 +53,14 @@ const SetPinPage: React.FC = () => {
       setErrorMessage("Only numbers are allowed");
     }
   };
+
+  // Verify PIN function with explicit types
   const verifyPin = async (
     pinCode: string,
     urlId: string,
-    router: any,
-    setErrorMessage: any
-  ) => {
+    router: ReturnType<typeof useRouter>,
+    setErrorMessage: React.Dispatch<React.SetStateAction<string>>
+  ): Promise<void> => {
     try {
       const res = await axios.post("http://dev.waply.co/api/v1/auth/login", {
         urlId,
@@ -86,7 +88,7 @@ const SetPinPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (): Promise<void> => {
     if (pin.length < 4 || confirmPin.length < 4) {
       setErrorMessage("Please enter a 4-digit PIN");
     } else if (pin !== confirmPin) {
