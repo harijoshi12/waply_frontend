@@ -56,20 +56,26 @@ const PinPage: React.FC = () => {
   const verifyPin = async (pinCode: string) => {
     if (!urlId) return;
     try {
-      const res = await axios.post("http://dev.waply.co/api/v1/auth/login", { urlId, pin: pinCode });
-  
+      const res = await axios.post("http://dev.waply.co/api/v1/auth/login", {
+        urlId,
+        pin: pinCode,
+      });
+
       if (res.status === 200) {
         console.log("Login successful");
-        
+
         // Store the token in local storage (or session storage)
         localStorage.setItem("authToken", res.data.token);
-  
-        router.push(`/events/${urlId}`);
+
+        router.push(`/events`);
       } else {
         throw new Error("Incorrect PIN"); // Trigger the catch block for incorrect PIN
       }
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.data?.message === "Incorrect PIN.") {
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.data?.message === "Incorrect PIN."
+      ) {
         setErrorMessage("Incorrect PIN. Please try again.");
       } else {
         console.error("Error verifying PIN:", error);
@@ -80,14 +86,12 @@ const PinPage: React.FC = () => {
       setIsVerifying(false); // Stop loading animation
     }
   };
-  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <form
         onSubmit={(e) => e.preventDefault()}
-        className="flex flex-col items-center justify-center bg-white p-8 rounded-lg shadow-lg text-center max-w-sm w-full h-screen md:h-auto md:w-auto md:max-w-sm"
-      >
+        className="flex flex-col items-center justify-center bg-white p-8 rounded-lg shadow-lg text-center max-w-sm w-full h-screen md:h-auto md:w-auto md:max-w-sm">
         <Image
           src={logo}
           alt="Logo"
@@ -103,8 +107,7 @@ const PinPage: React.FC = () => {
           {pin.map((digit, index) => (
             <div
               key={index}
-              className="w-10 h-10 mx-1 border border-gray-400 rounded text-lg flex items-center justify-center"
-            >
+              className="w-10 h-10 mx-1 border border-gray-400 rounded text-lg flex items-center justify-center">
               {isVerifying ? (
                 <span className="loading-dot"></span> // Show loading animation
               ) : (
@@ -114,11 +117,9 @@ const PinPage: React.FC = () => {
           ))}
         </div>
 
-        {errorMessage && (
-          <p className="text-red-500 mb-4">{errorMessage}</p>
-        )}
+        {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
 
-        <p className="text-orange-500 mb-8 text-sm">Powered By Waply</p>
+        <p className="text-orange-500 mb-8 text-sm"></p>
 
         <div className="grid grid-cols-3 gap-4 text-xl">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, ".", 0].map((num) => (
@@ -126,16 +127,14 @@ const PinPage: React.FC = () => {
               key={num}
               type="button"
               onClick={() => handlePinInput(num)}
-              className="w-16 h-16 bg-gray-100 text-black rounded-full flex items-center justify-center text-xl hover:bg-gray-200"
-            >
+              className="w-16 h-16 bg-gray-100 text-black rounded-full flex items-center justify-center text-xl hover:bg-gray-200">
               {num}
             </Button>
           ))}
           <Button
             type="button"
             onClick={() => handlePinInput("clear")}
-            className="w-16 h-16 bg-gray-800 text-white rounded-full flex items-center justify-center text-xl hover:bg-gray-900"
-          >
+            className="w-16 h-16 bg-[#FF8800] text-white rounded-full flex items-center justify-center text-2xl hover:bg-gray-900">
             ⌫
           </Button>
         </div>

@@ -15,18 +15,37 @@ interface Reminder {
   recurrence: string;
   customRecurrence?: string;
   invitees?: string;
-  // Add other fields as needed
+  nextOccurrence?: string;
+  relatedMeetingId?: {
+    attendees: { email: string }[];
+  };
 }
+
+// Define the form data type
+interface FormData {
+  taskDescription: string;
+  date: string;
+  time: string;
+  recurrence: string;
+  customRecurrence: string;
+  invitees: string;
+}
+
+// Define the grouped reminders type
+type GroupedReminders = Record<string, Reminder[]>;
 
 const Page = () => {
   // Initialize reminders state with Reminder[] type
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
-  const [selectedValue, setSelectedValue] = useState("today");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: "",
+    end: "",
+  });
+  const [selectedValue, setSelectedValue] = useState<string>("today");
+  const [showDropdown, setShowDropdown] = useState<boolean>(false);
+  const [formData, setFormData] = useState<FormData>({
     taskDescription: "",
     date: "",
     time: "",
@@ -34,14 +53,13 @@ const Page = () => {
     customRecurrence: "",
     invitees: "",
   });
-  const [originalData, setOriginalData] = useState({});
-  const [isEdited, setIsEdited] = useState(false);
+  const [originalData, setOriginalData] = useState<FormData | null>(null);
+  const [isEdited, setIsEdited] = useState<boolean>(false);
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(
     null
   );
-
   // Format date with suffix (e.g., "19th Nov, 2024")
-  const formatDate = (date: Date, includeYear = true) => {
+  const formatDate = (date: Date, includeYear = true): string => {
     const day = date.getDate();
     const month = date.toLocaleString("default", { month: "short" });
     const year = date.getFullYear();
@@ -59,14 +77,14 @@ const Page = () => {
   };
 
   // Format time range (e.g., "10:00 AM - 10:30 AM")
-  const formatTimeRange = (startTime, endTime) => {
-    const formatTime = (date) =>
+  const formatTimeRange = (startTime: Date, endTime: Date): string => {
+    const formatTime = (date: Date): string =>
       date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return `${formatTime(startTime)} - ${formatTime(endTime)}`;
   };
 
   // Update date range based on selected filter (today, this week, this month)
-  const updateDateRange = useCallback((filter) => {
+  const updateDateRange = useCallback((filter: string): void => {
     const today = new Date();
     if (filter === "today") {
       setDateRange({ start: formatDate(today), end: "" });
@@ -88,7 +106,7 @@ const Page = () => {
   }, []);
 
   // Fetch reminders from backend API
-  const fetchReminders = useCallback(async () => {
+  const fetchReminders = useCallback(async (): Promise<void> => {
     const token = localStorage.getItem("authToken");
     setIsLoading(true);
 
@@ -100,9 +118,8 @@ const Page = () => {
       const response = await axios.get("http://dev.waply.co/api/v1/reminders", {
         params: { page: 1, filter: backendFilter },
         headers: { Authorization: `Bearer ${token}` },
-        // withCredentials: true,
       });
-      const { reminders } = response.data;
+      const { reminders }: { reminders: Reminder[] } = response.data;
       setReminders(reminders);
     } catch (error) {
       console.error("Failed to fetch reminders:", error);
@@ -118,33 +135,31 @@ const Page = () => {
   }, [selectedValue, fetchReminders, updateDateRange]);
 
   // Handle date range selection change
-  const handleDateRangeChange = (key) => {
-    const selectedKey = key;
-    if (selectedKey === "this-week") setSelectedValue("this week");
-    else if (selectedKey === "this-month") setSelectedValue("this month");
+  const handleDateRangeChange = (key: string): void => {
+    if (key === "this-week") setSelectedValue("this week");
+    else if (key === "this-month") setSelectedValue("this month");
     else setSelectedValue("today");
-
     setShowDropdown(false);
   };
 
   // Group reminders by date for "this week" or "this month" view
-  const groupRemindersByDate = (reminders: Reminder[]) => {
+  const groupRemindersByDate = (reminders: Reminder[]): GroupedReminders => {
     return reminders.reduce((grouped, reminder) => {
       const date = new Date(reminder.nextOccurrence || "").toDateString();
       if (!grouped[date]) grouped[date] = [];
       grouped[date].push(reminder);
       return grouped;
-    }, {});
+    }, {} as GroupedReminders);
   };
 
   // Open edit modal with selected reminder details
-  const openEditModal = (reminder) => {
-    const nextOccurrence = new Date(reminder.nextOccurrence);
-    const initialData = {
+  const openEditModal = (reminder: Reminder): void => {
+    const nextOccurrence = new Date(reminder.nextOccurrence || "");
+    const initialData: FormData = {
       taskDescription: reminder.taskDescription,
       date: nextOccurrence.toISOString().split("T")[0],
       time: nextOccurrence.toTimeString().split(" ")[0].slice(0, 5),
-      recurrence: reminder.recurrence.frequency,
+      recurrence: reminder.recurrence,
       customRecurrence: "",
       invitees: reminder.relatedMeetingId
         ? reminder.relatedMeetingId.attendees
@@ -155,7 +170,7 @@ const Page = () => {
     setFormData(initialData);
     setOriginalData(initialData);
     setIsEdited(false);
-    setSelectedReminderId(reminder._id); // Set selected reminder ID for update
+    setSelectedReminderId(reminder._id);
     setIsEditModalOpen(true);
   };
 
@@ -172,7 +187,7 @@ const Page = () => {
   };
 
   // Generate userInput string and update reminder
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (): Promise<void> => {
     if (!selectedReminderId) return;
 
     // Determine if the reminder is associated with a meeting based on invitees
@@ -189,29 +204,22 @@ const Page = () => {
         : formData.recurrence
     }${isMeeting ? `, invitees: ${formData.invitees}` : ""}`;
 
-    // Prepare data for API request
-    const requestData = {
-      userInput,
-      isMeeting,
-    };
-
+    const requestData = { userInput, isMeeting };
     const token = localStorage.getItem("authToken");
+
     try {
       // Make API call to update reminder
       await axios.put(
         `http://dev.waply.co/api/v1/reminders/${selectedReminderId}`,
         requestData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          // withCredentials: true,
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Update local state and close the modal
       setReminders((prevReminders) =>
         prevReminders.map((reminder) =>
           reminder._id === selectedReminderId
-            ? { ...reminder, ...formData } // Update reminder in state
+            ? { ...reminder, ...formData }
             : reminder
         )
       );
@@ -222,7 +230,7 @@ const Page = () => {
   };
 
   // Delete reminder from backend
-  const deleteReminder = async () => {
+  const deleteReminder = async (): Promise<void> => {
     if (!selectedReminderId) return;
 
     const token = localStorage.getItem("authToken");
@@ -231,7 +239,6 @@ const Page = () => {
         `http://dev.waply.co/api/v1/reminders/${selectedReminderId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          // withCredentials: true,
           data: { isMeeting: Boolean(formData.invitees) },
         }
       );
@@ -244,7 +251,7 @@ const Page = () => {
     }
   };
 
-  const groupedReminders =
+  const groupedReminders: GroupedReminders | null =
     selectedValue !== "today" ? groupRemindersByDate(reminders) : null;
 
   return (
@@ -315,7 +322,10 @@ const Page = () => {
           <p>Loading...</p>
         ) : selectedValue === "today" ? (
           reminders.map((reminder, index) => {
-            const startTime = new Date(reminder.nextOccurrence);
+            // Safely handle undefined nextOccurrence
+            const startTime = reminder.nextOccurrence
+              ? new Date(reminder.nextOccurrence)
+              : new Date(); // Fallback to current date if undefined
             const endTime = new Date(startTime);
             endTime.setMinutes(
               startTime.getMinutes() + (reminder.relatedMeetingId ? 30 : 10)
@@ -338,7 +348,7 @@ const Page = () => {
             );
           })
         ) : (
-          Object.keys(groupedReminders).map((date) => (
+          Object.keys(groupedReminders || {}).map((date) => (
             <div key={date} className="mb-4">
               <div className="flex items-center justify-center mb-2">
                 <div className="border-t border-gray-300 flex-grow mr-2"></div>
@@ -347,29 +357,34 @@ const Page = () => {
                 </p>
                 <div className="border-t border-gray-300 flex-grow ml-2"></div>
               </div>
-              {groupedReminders[date].map((reminder, index) => {
-                const startTime = new Date(reminder.nextOccurrence);
-                const endTime = new Date(startTime);
-                endTime.setMinutes(
-                  startTime.getMinutes() + (reminder.relatedMeetingId ? 30 : 10)
-                );
+              {groupedReminders &&
+                groupedReminders[date].map((reminder, index) => {
+                  // Safely handle undefined nextOccurrence
+                  const startTime = reminder.nextOccurrence
+                    ? new Date(reminder.nextOccurrence)
+                    : new Date(); // Fallback to current date if undefined
+                  const endTime = new Date(startTime);
+                  endTime.setMinutes(
+                    startTime.getMinutes() +
+                      (reminder.relatedMeetingId ? 30 : 10)
+                  );
 
-                return (
-                  <div
-                    key={reminder._id}
-                    className={`w-full reminder-item mb-4 p-4 rounded flex justify-between items-center ${
-                      index % 2 === 0 ? "bg-[#FFFAF8]" : "bg-[#ffffff]"
-                    }`}
-                    onClick={() => openEditModal(reminder)}>
-                    <h3 className="font-medium text-[#272727] text-[16px]">
-                      {reminder.taskDescription}
-                    </h3>
-                    <span className="bg-[#FFF3E5] border-[#FF8800]/50 border-[1px]  text-sm px-3 py-1 rounded-md">
-                      {formatTimeRange(startTime, endTime)}
-                    </span>
-                  </div>
-                );
-              })}
+                  return (
+                    <div
+                      key={reminder._id}
+                      className={`w-full reminder-item mb-4 p-4 rounded flex justify-between items-center ${
+                        index % 2 === 0 ? "bg-[#FFFAF8]" : "bg-[#ffffff]"
+                      }`}
+                      onClick={() => openEditModal(reminder)}>
+                      <h3 className="font-medium text-[#272727] text-[16px]">
+                        {reminder.taskDescription}
+                      </h3>
+                      <span className="bg-[#FFF3E5] border-[#FF8800]/50 border-[1px] text-sm px-3 py-1 rounded-md">
+                        {formatTimeRange(startTime, endTime)}
+                      </span>
+                    </div>
+                  );
+                })}
             </div>
           ))
         )}

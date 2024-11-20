@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -53,6 +53,38 @@ const SetPinPage: React.FC = () => {
       setErrorMessage("Only numbers are allowed");
     }
   };
+  const verifyPin = async (
+    pinCode: string,
+    urlId: string,
+    router: any,
+    setErrorMessage: any
+  ) => {
+    try {
+      const res = await axios.post("http://dev.waply.co/api/v1/auth/login", {
+        urlId,
+        pin: pinCode,
+      });
+
+      if (res.status === 200) {
+        // Store the token in local storage (or session storage)
+        localStorage.setItem("authToken", res.data.token);
+
+        router.push(`/events`);
+      } else {
+        throw new Error("Incorrect PIN");
+      }
+    } catch (error) {
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.data?.message === "Incorrect PIN."
+      ) {
+        setErrorMessage("Incorrect PIN. Please try again.");
+      } else {
+        console.error("Error verifying PIN:", error);
+        setErrorMessage("An error occurred. Please try again.");
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (pin.length < 4 || confirmPin.length < 4) {
@@ -64,6 +96,7 @@ const SetPinPage: React.FC = () => {
 
       if (urlId) {
         try {
+          // First set the PIN
           const res = await axios.post(
             `http://dev.waply.co/api/v1/auth/set-pin/${urlId}`,
             { pin },
@@ -75,8 +108,8 @@ const SetPinPage: React.FC = () => {
           );
 
           if (res.status === 200) {
-            // Handle successful PIN setup, e.g., redirect to login or dashboard
-            router.push(`/${urlId}`);
+            // If PIN setup is successful, verify the PIN to log the user in
+            await verifyPin(pin, urlId, router, setErrorMessage);
           } else {
             setErrorMessage("Failed to set PIN. Please try again.");
           }
@@ -94,15 +127,22 @@ const SetPinPage: React.FC = () => {
     <div
       className={`min-h-screen flex items-center justify-center bg-gray-100 px-4 ${
         isKeyboardVisible ? "translate-y-[-20%]" : ""
-      }`}
-    >
+      }`}>
       <div className="bg-white p-6 sm:p-10 rounded-lg shadow-lg text-center w-full max-w-sm">
         {/* Logo */}
-        <Image src={logo} alt="Logo" width={50} height={50} className="mx-auto mb-6" />
+        <Image
+          src={logo}
+          alt="Logo"
+          width={50}
+          height={50}
+          className="mx-auto mb-6"
+        />
 
         {/* Greeting */}
         <h2 className="text-lg font-semibold">Set Your 4-Digit PIN</h2>
-        <p className="text-gray-500 mt-2 mb-6">Enter and re-enter your PIN below</p>
+        <p className="text-gray-500 mt-2 mb-6">
+          Enter and re-enter your PIN below
+        </p>
 
         {/* PIN Input Fields */}
         <div className="space-y-4">
@@ -127,13 +167,14 @@ const SetPinPage: React.FC = () => {
         </div>
 
         {/* Error Message */}
-        {errorMessage && <p className="text-red-500 mt-4 text-sm">{errorMessage}</p>}
+        {errorMessage && (
+          <p className="text-red-500 mt-4 text-sm">{errorMessage}</p>
+        )}
 
         {/* Submit Button */}
         <button
           onClick={handleSubmit}
-          className="mt-6 w-full bg-orange-500 text-white py-2 rounded font-semibold text-lg transition-colors duration-200 hover:bg-orange-600"
-        >
+          className="mt-6 w-full bg-orange-500 text-white py-2 rounded font-semibold text-lg transition-colors duration-200 hover:bg-orange-600">
           Set PIN
         </button>
       </div>
