@@ -6,10 +6,6 @@ import logo from "../../../public/assets/logo-waply.png";
 import { FaAngleDown } from "react-icons/fa";
 import axios from "axios";
 
-type Props = {
-  params: Promise<{ id: string }>;
-  name: string;
-};
 // Define the Reminder type (adjust fields as needed based on your data structure)
 interface Reminder {
   _id: string;
@@ -21,10 +17,17 @@ interface Reminder {
   invitees?: string;
   // Add other fields as needed
 }
-const Page = ({ params }: Props) => {
+type Props = {
+  params: { id: string }; // Correctly typed params for dynamic routes
+};
+const Page: React.FC<Props> = ({ params }) => {
   const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(
     null
   );
+
+  useEffect(() => {
+    setUnwrappedParams(params); // No need to resolve a promise here
+  }, [params]);
 
   // Initialize reminders state with Reminder[] type
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -46,11 +49,6 @@ const Page = ({ params }: Props) => {
   const [selectedReminderId, setSelectedReminderId] = useState<string | null>(
     null
   );
-
-  // Load parameters on component mount
-  useEffect(() => {
-    params.then((resolvedParams) => setUnwrappedParams(resolvedParams));
-  }, [params]);
 
   // Format date with suffix (e.g., "19th Nov, 2024")
   const formatDate = (date: Date, includeYear = true) => {
