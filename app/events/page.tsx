@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import logo from "../../../public/assets/logo-waply.png";
+import logo from "../../public/assets/logo-waply.png";
 import { FaAngleDown } from "react-icons/fa";
 import axios from "axios";
 
@@ -17,18 +17,8 @@ interface Reminder {
   invitees?: string;
   // Add other fields as needed
 }
-type Props = {
-  params: { id: string }; // Correctly typed params for dynamic routes
-};
-const Page: React.FC<Props> = ({ params }) => {
-  const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(
-    null
-  );
 
-  useEffect(() => {
-    setUnwrappedParams(params); // No need to resolve a promise here
-  }, [params]);
-
+const Page = () => {
   // Initialize reminders state with Reminder[] type
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -253,8 +243,6 @@ const Page: React.FC<Props> = ({ params }) => {
       console.error("Failed to delete reminder:", error);
     }
   };
-
-  if (!unwrappedParams) return <p>Loading...</p>;
 
   const groupedReminders =
     selectedValue !== "today" ? groupRemindersByDate(reminders) : null;
